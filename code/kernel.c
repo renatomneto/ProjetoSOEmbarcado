@@ -34,6 +34,12 @@ char kernelAddProc()
     return SUCCESS;
 }
 
+/**
+ * @brief atualiza o indice start para que o buffer circular possa inserir 
+ * mais processos até que se chegue ao fim dos processos 
+ * @return char Retorna se a operação de remoção foi bem sucedida ou não.
+ * retornará FALSE quando o buffer circular ja tiver executado todos os processos
+ */
 char kernelRemoveProc(){
     processes[start].priority = 0;
     if(end != start){
@@ -43,27 +49,36 @@ char kernelRemoveProc(){
   return FAIL;
 }
 
+/**
+ * @brief Loop principal do kernel, funcionando como 'maquina de estados' para 
+ * executar os dois algoritmos sequencialmente
+ */
 void kernelLoop(void){
-    switch (state)
+    switch (state) //identifica o estado
     {
-    case BATCH:
+    case BATCH: //algoritmo em Batch
         circular_buffer.exec = priorityScheduling;
 
-        while(!feof(input)){
+        while(!feof(input)){ //equanto não chegar ao fim do arquivo de input
+        //preenchendo o buffer circular
         if (((end + 1) % MAX_PROCESSES) != start)
         {
-            kernelAddProc();
-            end = (end + 1) % (MAX_PROCESSES);  
-        }else{
+            kernelAddProc(); //adiciona ao buffer o processo
+            end = (end + 1) % (MAX_PROCESSES);  //atualiza o indice do buffer
+        }else{ //ao encher o buffer começa a execução dos processos
             circular_buffer.exec();
         }
         }
+        //execução dos processos restantes do buffer após todos os processos 
+        //do arquivo terem sido lidos
         while(circular_buffer.exec() != FAIL)
         {
+            //atualiza a prioridade do processo para que ele seja marcado com 'executado'
+            //buffer
             processes[start-1].priority = 0;
         }
-        fclose(input);
-        kernelNextTask();
+        fclose(input); //fecha o arquivo de processos
+        kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
         break;
     case INTERATIVE:
         
@@ -72,8 +87,15 @@ void kernelLoop(void){
     }
     
 }
-
+/**
+ * @brief Função que muda o estado de execução do kernel para executar todas as
+ * tarefas
+ * @return char Retorna SUCCESS caso a mudança seja bem sucedida ou
+ * FAIL caso não seja
+ */
 char kernelNextTask(void){
+    //verifica o estado atual e muda para o próximo estado
+    //como são apenas 2 estados, o if ficou simplificado
     if(state != INTERATIVE){
         state = INTERATIVE;
         return SUCCESS;
@@ -84,9 +106,16 @@ char kernelNextTask(void){
     return FAIL;
 }
 
+/**
+ * @brief Algoritmo Priority-based para escalonar os processos em Batch com base
+ * na maior prioridade. Importante ressaltar que os processos são executados 
+ * após o buffer circular estar preenchido, e então, quando chega um novo processo, 
+ * se ele for de maior prioridade que os processos do buffer, ele é executado.
+ * @return char Retorna SUCCESS se o processo foi executado e então removido do buffer,
+ * retorna FAIL quando não houver mais processos para executar
+ */
 char priorityScheduling(void)
 {
-    ///@todo consertar o indice de maior prioridade quando entrar no segundo while
     int end_aux = start;
     Process highestPriorityProcess = processes[start];
     while (((end_aux + 1) % MAX_PROCESSES) != start)
