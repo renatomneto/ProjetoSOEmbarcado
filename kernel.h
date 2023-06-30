@@ -12,6 +12,11 @@ FILE *input;
 
 typedef char (*ptrFunc)(void);
 
+typedef enum {
+  BATCH = 0,
+  INTERATIVE
+}STATES;
+
 typedef struct {
   int id;
   int priority;
@@ -36,6 +41,7 @@ typedef struct {
 Scheduler circular_buffer;
 Process processes[MAX_PROCESSES];
 Queue queues[MAX_PROCESSES];
+STATES state; 
 int start, end, clock_tick, linha;
 
 char priorityScheduling(void);
@@ -46,7 +52,7 @@ char multipleQueue(void);
 char kernelInit(void);
 char kernelAddProc();
 char kernelRemoveProc();
-
 void kernelLoop(void);
+char kernelNextTask(void);
 
 char exec(void);

@@ -1,5 +1,6 @@
 #include "kernel.h"
 
+//Main para debugar o projeto no VSCode
 // int main(void){
 //     kernelInit();
 //     kernelLoop();
@@ -12,6 +13,7 @@ char kernelInit(){
     linha = 0;
     circular_buffer.num_queues = 0;
     circular_buffer.process_pool = processes;
+    state = BATCH;
     input = fopen("input.txt", "r");
     
     if (input == NULL) {
@@ -42,10 +44,11 @@ char kernelRemoveProc(){
 }
 
 void kernelLoop(void){
-    switch ()
+    switch (state)
     {
-    case /* constant-expression */:
+    case BATCH:
         circular_buffer.exec = priorityScheduling;
+
         while(!feof(input)){
         if (((end + 1) % MAX_PROCESSES) != start)
         {
@@ -60,28 +63,27 @@ void kernelLoop(void){
             processes[start-1].priority = 0;
         }
         fclose(input);
+        kernelNextTask();
         break;
-    
+    case INTERATIVE:
+        
     default:
         break;
     }
-circular_buffer.exec = priorityScheduling;
-    while(!feof(input)){
-        if (((end + 1) % MAX_PROCESSES) != start)
-        {
-            kernelAddProc();
-            end = (end + 1) % (MAX_PROCESSES);  
-        }else{
-            circular_buffer.exec();
-        }
-    }
-    while(circular_buffer.exec() != FAIL)
-    {
-        processes[start-1].priority = 0;
-    }
-    fclose(input);
-
+    
 }
+
+char kernelNextTask(void){
+    if(state != INTERATIVE){
+        state = INTERATIVE;
+        return SUCCESS;
+    }else{
+        state = BATCH;
+        return SUCCESS;
+    }
+    return FAIL;
+}
+
 char priorityScheduling(void)
 {
     ///@todo consertar o indice de maior prioridade quando entrar no segundo while
