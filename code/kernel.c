@@ -1,10 +1,12 @@
 #include "kernel.h"
 
 //Main para debugar o projeto no VSCode
-// int main(void){
-//     kernelInit();
-//     kernelLoop();
-// }
+int main(void){
+    kernelInit();
+    kernelLoop();
+    kernelLoop();
+    return 0;
+}
 
 /**
  * @brief Inicialização das variaveis de controle do Kernel
@@ -19,6 +21,7 @@ char kernelInit(){
     linha = 0; //controle numero de linhas
     circular_buffer.num_queues = 0; //controle do numero de filas
     circular_buffer.process_pool = processes; //adicionando os processos ao buffer circular
+    circular_buffer.queues = queues;
     state = BATCH; //estado do sistema (usado para executar os algoritmos)
     //abertura do arquivo com os processos
     input = fopen("input.txt", "r");
@@ -70,7 +73,7 @@ void kernelLoop(void){
         //preenchendo o buffer circular
         if (((end + 1) % MAX_PROCESSES) != start)
         {
-            kernelAddProc(); //adiciona ao buffer o processo
+            kernelAddProc(); //adiciona o processo ao buffer
             end = (end + 1) % (MAX_PROCESSES);  //atualiza o indice do buffer
         }else{ //ao encher o buffer começa a execução dos processos
             circular_buffer.exec();
@@ -87,13 +90,76 @@ void kernelLoop(void){
         fclose(input); //fecha o arquivo de processos
         kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
         break;
+
     case INTERATIVE:
-        
+        linha = 0;
+        input = fopen("input.txt", "r");
+        if (input == NULL) {
+            printf("Erro ao abrir o arquivo.");
+        }
+        circular_buffer.exec = multilevelQueuePriority;
+        //definindo as filas que terão as prioridades separadas
+        kernelAddQueue();
+        kernelAddQueue();
+        kernelAddQueue();
+
+        while(!feof(input)){ //equanto não chegar ao fim do arquivo de input
+        //preenchendo o buffer circular
+        if (((end + 1) % MAX_PROCESSES) != start)
+        {
+            kernelAddProc(); //adiciona o processo ao buffer
+            if(processes[end].priority <= 7)
+                kernelEnqueue(circular_buffer.queues, 0); //prioridade de 1 a 7
+            else if(processes[end].priority > 7 && processes[end].priority <= 14)
+                kernelEnqueue(circular_buffer.queues, 1); //prioridade de 8 a 14
+            else if(processes[end].priority > 14 && processes[end].priority <= 21)
+                kernelEnqueue(circular_buffer.queues, 2); //prioridade de 15 a 21
+            
+            end = (end + 1) % (MAX_PROCESSES);  //atualiza o indice do buffer
+        }else{
+            kernelRemoveProc();
+        }
+        }
+
+        while(circular_buffer.exec() != FAIL);
+        fclose(input); //fecha o arquivo de processos
+        kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
+        break;
     default:
         break;
     }
-    
 }
+
+char kernelAddQueue() {
+    if (circular_buffer.num_queues >= MAX_NUM_QUEUES) {
+        
+        return FAIL;
+    }
+    queues[circular_buffer.num_queues].head = 0;
+    queues[circular_buffer.num_queues].tail = 0;
+    circular_buffer.num_queues++;
+    return SUCCESS; // retorna indice da fila
+}
+//insere item no final da fila retorna 0 se sucesso ou -1 se a fila estiver cheia
+char kernelEnqueue(Queue *q, int index) {
+    if ((q[index].tail + 1) % MAX_QUEUE_SIZE == q[index].head) {
+        return FAIL; // queue is full
+    }
+    q[index].buffer[q[index].tail] = processes[end];
+    q[index].tail = (q[index].tail + 1) % MAX_QUEUE_SIZE;
+    return SUCCESS;
+}
+
+//remove item do inicio da fila e retorna um queue_item_t com o ponteiro para os 
+//dados do elemento e o seu tamanho (se fila vazia retorna queue_item_t Null e tamanho 0) 
+char kernelDequeue(Queue *q, int index) {
+    q[index].head = (q[index].head + 1) % MAX_QUEUE_SIZE;
+    if (q[index].head == q[index].tail) {
+        return FAIL; // queue is empty
+    }
+    return SUCCESS;
+}
+
 /**
  * @brief Função que muda o estado de execução do kernel para executar todas as
  * tarefas
@@ -143,4 +209,41 @@ char priorityScheduling(void)
     //verifica se houve a exclusão de um processo
     if(kernelRemoveProc() == SUCCESS) return SUCCESS;
     else return FAIL;
+}
+
+char multilevelQueuePriority(void)
+{
+    int head_aux, tail_aux, index, i;
+    char queueEmpty = REPEAT;
+    Process aux;
+    while(circular_buffer.num_queues > 0){
+        index = circular_buffer.num_queues-1;
+        head_aux = queues[index].head;
+        tail_aux = queues[index].tail-1;
+        char queueEmpty = REPEAT;
+
+        while(queueEmpty != SUCCESS){
+            for(i = head_aux; i <= tail_aux; i++){
+                queues[index].buffer[i].running = 1;
+                queues[index].buffer[i].time_left -= clock_tick;
+                
+                if(queues[index].buffer[i].time_left <= 0 && queues[index].buffer[i].done != 1){
+                    queues[index].buffer[i].done = 1;
+
+                    aux = queues[index].buffer[i];
+                    queues[index].buffer[i] = queues[index].buffer[head_aux];
+                    queues[index].buffer[head_aux] = aux;
+                    printf("%d. Process ID: %d \tPRIORITY: %d\tTIME LEFT: %d\n",linha++, aux.id, aux.priority, aux.time_left);
+                    
+                    if(kernelDequeue(circular_buffer.queues, index) == FAIL){
+                        circular_buffer.num_queues--;
+                        queueEmpty = SUCCESS;
+                    }else{
+                        head_aux = queues[index].head;       
+                    }
+                }
+            }
+        }
+    }
+    return SUCCESS;
 }

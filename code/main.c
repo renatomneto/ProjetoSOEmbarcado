@@ -8,5 +8,6 @@ int main(void){
     * dos dois algoritmos. Em um sistema embarcado, o for(;;) dentro
     * de kernelLoop() iria executar corretamente os dois algoritmos.
     */
-    kernelLoop();
+    //kernelLoop();
+    return 0;
 }
