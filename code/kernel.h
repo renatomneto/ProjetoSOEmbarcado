@@ -7,7 +7,7 @@ FILE *input;
 #define FAIL 1
 #define REPEAT 2
 #define MAX_PROCESSES 10
-#define MAX_QUEUE_SIZE 100
+#define MAX_QUEUE_SIZE 20
 #define MAX_NUM_QUEUES 10
 
 typedef char (*ptrFunc)(void);
@@ -26,13 +26,13 @@ typedef struct {
 } Process;
 
 typedef struct {
-    Process *buffer[MAX_PROCESSES];
+    Process buffer[MAX_QUEUE_SIZE];
     int head;
     int tail;
 }Queue;
 
 typedef struct {
-    Queue *queues[MAX_PROCESSES];
+    Queue *queues;
     Process *process_pool;
     int num_queues;
     ptrFunc exec;
@@ -47,12 +47,14 @@ int start, end, clock_tick, linha;
 char priorityScheduling(void);
 
 /// @todo serparar as filas por faixa de prioridade tipo 1-5 6-10 
-char multipleQueue(void);
+char multilevelQueuePriority(void);
 
 char kernelInit(void);
 char kernelAddProc();
 char kernelRemoveProc();
 void kernelLoop(void);
 char kernelNextTask(void);
-
+char kernelDequeue(Queue *q, int index);
+char kernelEnqueue(Queue *q, int index);
 char exec(void);
+char kernelAddQueue(void);
