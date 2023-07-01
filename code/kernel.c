@@ -84,7 +84,7 @@ void kernelLoop(void){
         kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
         break;
 
-    case INTERATIVE:
+    case INTERATIVE: // adicionará todos os processos do arquivo às filas para então executar
         printf("\n=============== MULTILEVEL BY PRIORITY ==============\n");
         linha = 0;
         input = fopen("input.txt", "r");
@@ -94,7 +94,7 @@ void kernelLoop(void){
         circular_buffer.exec = multilevelQueuePriority;
         //definindo as filas que terão as prioridades separadas
         kernelAddQueue();
-        kernelAddQueue();
+        kernelAddQueue();   
         kernelAddQueue();
 
         while(!feof(input)){ //equanto não chegar ao fim do arquivo de input
@@ -102,6 +102,7 @@ void kernelLoop(void){
         if (((end + 1) % MAX_PROCESSES) != start)
         {
             kernelAddProc(); //adiciona o processo ao buffer
+            //definindo a faixa de indices para cada fila
             if(processes[end].priority <= 7)
                 kernelEnqueue(circular_buffer.queues, 0); //prioridade de 1 a 7
             else if(processes[end].priority > 7 && processes[end].priority <= 14)
@@ -111,10 +112,11 @@ void kernelLoop(void){
             
             end = (end + 1) % (MAX_PROCESSES);  //atualiza o indice do buffer
         }else{
+            //atualiza o buffer_circular para continuar adicionando os processos
             kernelRemoveProc();
         }
         }
-
+        //executa o algoritmo até o final
         while(circular_buffer.exec() != SUCCESS);
         fclose(input); //fecha o arquivo de processos
         kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
@@ -124,6 +126,10 @@ void kernelLoop(void){
     }
 }
 
+/**
+ * @brief Adiciona e inicializa os parametros de uma fila
+ * @return char Retorna FAIL se houver o numero máximo de filas ou SUCCESS se a fila foi adicionada
+ */
 char kernelAddQueue() {
     if (circular_buffer.num_queues >= MAX_NUM_QUEUES) {
         
@@ -134,22 +140,35 @@ char kernelAddQueue() {
     circular_buffer.num_queues++;
     return SUCCESS; // retorna indice da fila
 }
-//insere item no final da fila retorna 0 se sucesso ou -1 se a fila estiver cheia
+
+/**
+ * @brief insere item no final da fila retorna 0 se sucesso ou -1 se a fila estiver cheia
+ * 
+ * @param q Fila que terá os processos adicionados
+ * @param index Indice da fila de acordo com a faixa de prioridade definida
+ * @return char Retorna FAIL se a fila estiver cheia e SUCCESS se o processo foi adicionado 
+ * corretamente
+ */
 char kernelEnqueue(Queue *q, int index) {
     if ((q[index].tail + 1) % MAX_QUEUE_SIZE == q[index].head) {
-        return FAIL; // queue is full
+        return FAIL; 
     }
     q[index].buffer[q[index].tail] = processes[end];
     q[index].tail = (q[index].tail + 1) % MAX_QUEUE_SIZE;
     return SUCCESS;
 }
 
-//remove item do inicio da fila e retorna um queue_item_t com o ponteiro para os 
-//dados do elemento e o seu tamanho (se fila vazia retorna queue_item_t Null e tamanho 0) 
+/**
+ * @brief Remove item do inicio da fila e retorna um queue_item_t com o ponteiro para os 
+ * dados do elemento e o seu tamanho (se fila vazia retorna queue_item_t Null e tamanho 0)
+ * @param q Fila que terá os processos retirados
+ * @param index Indice da fila de acordo com a faixa de prioridade definida
+ * @return char Retorna FAIL se a fila estiver vazia e SUCCESS se ainda não estiver vazia
+ */
 char kernelDequeue(Queue *q, int index) {
     q[index].head = (q[index].head + 1) % MAX_QUEUE_SIZE;
     if (q[index].head == q[index].tail) {
-        return FAIL; // queue is empty
+        return FAIL; 
     }
     return SUCCESS;
 }
@@ -205,34 +224,54 @@ char priorityScheduling(void)
     else return FAIL;
 }
 
+/**
+ * @brief Algoritmo de escalonamento de multifilas com prioridade. O algoritmo inicia pela fila com maior indice
+ * pois é a fila com os processos de maior prioridade. TODOS os algoritmos da fila selecionada são executados para então 
+ * a próxima fila ser executada. 
+ * 
+ * @return char Retorna SUCCESS ao finalizar a execução do algoritmo
+ */
 char multilevelQueuePriority(void)
 {
+    //variaveis de controle
     int head_aux, tail_aux, index, i;
+    //variavel de controle de execução das filas
     char queueEmpty = REPEAT;
-    Process aux;
+    Process aux; //processo auxiliar
+    //enquanto todas as filas não forem removidas
     while(circular_buffer.num_queues > 0){
         index = circular_buffer.num_queues-1;
         head_aux = queues[index].head;
         tail_aux = queues[index].tail-1;
         char queueEmpty = REPEAT;
 
+        //executa até a fila estiver vazia
         while(queueEmpty != SUCCESS){
+            //for para percorrer todos os processos da fila
             for(i = head_aux; i <= tail_aux; i++){
+                //atualiza o status do processo da fila
                 queues[index].buffer[i].running = 1;
+                //subtrai o clock_tick do tempo do processo
                 queues[index].buffer[i].time_left -= clock_tick;
-                
+                //se o processo não tiver acabado o tempo de execução e a flag done não estiver em 1
                 if(queues[index].buffer[i].time_left <= 0 && queues[index].buffer[i].done != 1){
-                    queues[index].buffer[i].done = 1;
+                    queues[index].buffer[i].done = 1; //atualiza a flag que indica o termino da execução
 
+                    //troca o processo executado com o processo que está na 'head' da fila para executar a 
+                    //remoção do processo da fila e continuar a execução
                     aux = queues[index].buffer[i];
                     queues[index].buffer[i] = queues[index].buffer[head_aux];
                     queues[index].buffer[head_aux] = aux;
                     printf("%d. Process ID: %d \tPRIORITY: %d\tTIME LEFT: %d\n",linha++, aux.id, aux.priority, aux.time_left);
-                    
+                    //remove o processo em 'head' e verifica se a fila está vazia
+                    //se não estiver vazia atualiza o indice de inicio do for
                     if(kernelDequeue(circular_buffer.queues, index) == FAIL){
+                        //se a fila estiver vazia altera o indice das filas em execução
                         circular_buffer.num_queues--;
+                        //se a fila estiver vazia atualiza a flag de controle
                         queueEmpty = SUCCESS;
                     }else{
+                        //atualiza o indice 'head' do for
                         head_aux = queues[index].head;       
                     }
                 }
