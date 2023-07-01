@@ -1,13 +1,5 @@
 #include "kernel.h"
 
-//Main para debugar o projeto no VSCode
-int main(void){
-    kernelInit();
-    kernelLoop();
-    kernelLoop();
-    return 0;
-}
-
 /**
  * @brief Inicialização das variaveis de controle do Kernel
  * 
@@ -67,6 +59,7 @@ void kernelLoop(void){
     switch (state) //identifica o estado
     {
     case BATCH: //algoritmo em Batch
+        printf("\n================= PRIORITY (BATCH) =================\n");
         circular_buffer.exec = priorityScheduling;
 
         while(!feof(input)){ //equanto não chegar ao fim do arquivo de input
@@ -92,6 +85,7 @@ void kernelLoop(void){
         break;
 
     case INTERATIVE:
+        printf("\n=============== MULTILEVEL BY PRIORITY ==============\n");
         linha = 0;
         input = fopen("input.txt", "r");
         if (input == NULL) {
@@ -121,7 +115,7 @@ void kernelLoop(void){
         }
         }
 
-        while(circular_buffer.exec() != FAIL);
+        while(circular_buffer.exec() != SUCCESS);
         fclose(input); //fecha o arquivo de processos
         kernelNextTask(); //muda para o próximo estado, para executar o próximo algoritmo
         break;
