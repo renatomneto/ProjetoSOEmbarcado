@@ -1,22 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//===========================================================
+// INICIALIZAÇÃO DOS ARQUIVOS 
+//===========================================================
 FILE *input;
+
+//===========================================================
+// FLAGS DE SINALIZAÇÃO
+//===========================================================
 
 #define SUCCESS 0
 #define FAIL 1
 #define REPEAT 2
+
+//===========================================================
+// DEFINES DE TAMANHO DOS BUFFERS
+//===========================================================
 #define MAX_PROCESSES 10
 #define MAX_QUEUE_SIZE 20
 #define MAX_NUM_QUEUES 10
 
+//===========================================================
+// PONTEIROS DE FUNÇÃO
+//===========================================================
 typedef char (*ptrFunc)(void);
 
+//===========================================================
+// DEFINIÇÃO DE ESTADOS
+//===========================================================
 typedef enum {
   BATCH = 0,
   INTERATIVE
 }STATES;
 
+//===========================================================
+// DEFINIÇÃO DAS ESTRUTURAS 
+//===========================================================
 typedef struct {
   int id;
   int priority;
@@ -38,17 +58,24 @@ typedef struct {
     ptrFunc exec;
 } Scheduler;
 
+//===========================================================
+// CRIAÇÃO DOS BUFFERS E FILAS
+//===========================================================
 Scheduler circular_buffer;
 Process processes[MAX_PROCESSES];
 Queue queues[MAX_PROCESSES];
 STATES state; 
+
+//===========================================================
+// FLAGS DE CONTROLE
+//===========================================================
 int start, end, clock_tick, linha;
 
+//===========================================================
+// PROTÓTIPOS DAS FUNÇÕES DO KERNEL
+//===========================================================
 char priorityScheduling(void);
-
-/// @todo serparar as filas por faixa de prioridade tipo 1-5 6-10 
 char multilevelQueuePriority(void);
-
 char kernelInit(void);
 char kernelAddProc();
 char kernelRemoveProc();
