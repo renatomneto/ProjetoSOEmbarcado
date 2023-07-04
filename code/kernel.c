@@ -9,31 +9,34 @@
 char kernelInit(){
     start = 0; //indice que controla a inserção ou exclusão de itens do buffer circular
     end = 0; //indice que irá percorrer o buffer circular
-    clock_tick = 5;
+    clock_tick = 5; //quantum
     linha = 0; //controle numero de linhas
     circular_buffer.num_queues = 0; //controle do numero de filas
-    circular_buffer.process_pool = processes; //adicionando os processos ao buffer circular
-    circular_buffer.queues = queues;
+    circular_buffer.process_pool = processes; //apontando os processos ao buffer circular
+    circular_buffer.queues = queues; //apontando as filas ao buffer circular
     state = BATCH; //estado do sistema (usado para executar os algoritmos)
     //abertura do arquivo com os processos
     input = fopen("input.txt", "r");
-    if (input == NULL) {
+    if (input == NULL) { //verificação de erro
         printf("Erro ao abrir o arquivo.");
         return FAIL;
     }
     return SUCCESS;
 }
 
-char exec(void){
-    printf("Executado");
-    return SUCCESS;
-}
-
+/**
+ * @brief Função que adiciona os processo de acordo com o arquivo de entrada 
+ * 
+ * @return char Retorna SUCCESS se o processo foi corretamente adicionado ou FAIL 
+ * caso contrário
+ */
 char kernelAddProc()
 {
     //adiciona ao procesos de indice 'end' as informações da linha do arquivo
     fscanf(input, "%d %d %d", &processes[end].id, &processes[end].priority, &processes[end].time_left);
-    return SUCCESS;
+    if(processes[end].id >= 0)
+        return SUCCESS;
+    return FAIL;
 }
 
 /**
@@ -216,12 +219,13 @@ char priorityScheduling(void)
         } 
         end_aux = (end_aux + 1) % (MAX_PROCESSES); //atualiza indice que está percorrendo o buffer
     }
-    if(highestPriorityProcess.priority != 0) //se não chegou ao fim da execução
-        //imprime o processo a ser executado
-        printf("%d. Process ID: %d \tPRIORITY: %d\tTIME LEFT: %d\n", linha++, processes[start].id, processes[start].priority, processes[start].time_left);
+    //imprime o processo a ser executado
+    processes[start].time_left = 0; //atualiza o tempo restante de execução
+    printf("%d. Process ID: %d \tPRIORITY: %d\tTIME-LEFT: %d\n", linha++, processes[start].id, processes[start].priority, processes[start].time_left);
     //verifica se houve a exclusão de um processo
     if(kernelRemoveProc() == SUCCESS) return SUCCESS;
     else return FAIL;
+    
 }
 
 /**
@@ -236,14 +240,14 @@ char multilevelQueuePriority(void)
     //variaveis de controle
     int head_aux, tail_aux, index, i;
     //variavel de controle de execução das filas
-    char queueEmpty = REPEAT;
+    char queueEmpty;
     Process aux; //processo auxiliar
     //enquanto todas as filas não forem removidas
     while(circular_buffer.num_queues > 0){
         index = circular_buffer.num_queues-1;
         head_aux = queues[index].head;
         tail_aux = queues[index].tail-1;
-        char queueEmpty = REPEAT;
+        queueEmpty = REPEAT;
 
         //executa até a fila estiver vazia
         while(queueEmpty != SUCCESS){
@@ -262,7 +266,7 @@ char multilevelQueuePriority(void)
                     aux = queues[index].buffer[i];
                     queues[index].buffer[i] = queues[index].buffer[head_aux];
                     queues[index].buffer[head_aux] = aux;
-                    printf("%d. Process ID: %d \tPRIORITY: %d\tTIME LEFT: %d\n",linha++, aux.id, aux.priority, aux.time_left);
+                    printf("%d. Process ID: %d \tPRIORITY: %d\tTIME LEFT: %d\tDONE STATUS: %d\n",linha++, aux.id, aux.priority, aux.time_left, aux.done);
                     //remove o processo em 'head' e verifica se a fila está vazia
                     //se não estiver vazia atualiza o indice de inicio do for
                     if(kernelDequeue(circular_buffer.queues, index) == FAIL){
